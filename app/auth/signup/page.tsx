@@ -44,9 +44,17 @@ export default function SignupPage() {
 
     try {
       // Sign up with Supabase Auth
+      // El trigger SQL (handle_new_user_setup) creará el perfil, wallet y rol automáticamente
       const { data, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
+        options: {
+          // Estos datos van a raw_user_meta_data y el trigger los usará
+          data: {
+            username: formData.username,
+            display_name: formData.displayName,
+          },
+        },
       })
 
       if (authError) {
@@ -55,47 +63,13 @@ export default function SignupPage() {
       }
 
       if (data.user) {
-        // Create profile
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .insert({
-            id: data.user.id,
-            username: formData.username,
-            display_name: formData.displayName,
-          })
-
-        if (profileError) {
-          setError("Error al crear el perfil: " + profileError.message)
-          return
-        }
-
-        // Get viewer role id
-        const { data: roleData, error: roleFetchError } = await supabase
-          .from("roles")
-          .select("id")
-          .eq("name", "viewer")
-          .single()
-
-        if (roleFetchError || !roleData) {
-          console.error("Error getting viewer role:", roleFetchError)
-        } else {
-          // Assign default role (viewer)
-          const { error: roleError } = await supabase
-            .from("user_roles")
-            .insert({
-              user_id: data.user.id,
-              role_id: roleData.id,
-            })
-
-          if (roleError) {
-            console.error("Error assigning role:", roleError)
-          }
-        }
-
+        // El trigger SQL ya creó: perfil, wallet y rol
+        // Solo mostramos mensaje de confirmación
         router.push("/auth/login?message=Verifica tu email para completar el registro")
       }
     } catch (err) {
       setError("Ocurrió un error inesperado")
+      console.error(err)
     } finally {
       setLoading(false)
     }

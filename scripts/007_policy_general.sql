@@ -89,6 +89,10 @@ USING (true);
 CREATE POLICY profile_select_policy ON public.profiles FOR SELECT 
 USING (deleted_at IS NULL AND (has_permission('profile:view:all') OR auth.uid() = id));
 
+-- Permitir que el sistema (o el usuario al registrarse) cree su propio perfil
+CREATE POLICY profile_insert_policy ON public.profiles FOR INSERT 
+WITH CHECK (auth.uid() = id);
+
 CREATE POLICY profile_update_policy ON public.profiles FOR UPDATE 
 USING (auth.uid() = id AND has_permission('profile:edit:self'))
 WITH CHECK (auth.uid() = id);
