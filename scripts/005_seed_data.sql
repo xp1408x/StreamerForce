@@ -94,8 +94,11 @@ ON CONFLICT (slug) DO NOTHING;
 -- =============================================================================
 -- ASIGNACIÓN DE PERMISOS A ROLES
 -- =============================================================================
+-- Limpiar permisos previos para evitar duplicados si re-ejecutas
+TRUNCATE public.role_permissions CASCADE;
+
 -- ==========================================
--- VIEWER (El nivel más bajo)
+-- 1. VIEWER (Nivel base para todos)
 -- ==========================================
 INSERT INTO public.role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM public.roles r, public.permissions p
@@ -108,7 +111,8 @@ AND p.slug IN (
 );
 
 -- ==========================================
--- SUBSCRIBER (Viewer + Ventajas VIP)
+-- 2. SUBSCRIBER (Solo beneficios VIP)
+-- Hereda de VIEWER
 -- ==========================================
 INSERT INTO public.role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM public.roles r, public.permissions p
@@ -119,7 +123,8 @@ AND (
 );
 
 -- ==========================================
--- STREAMER (Subscriber + Gestión de su marca)
+-- 3. STREAMER (Solo herramientas de creación)
+-- Hereda de VIEWER (No de Subscriber por defecto)
 -- ==========================================
 INSERT INTO public.role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM public.roles r, public.permissions p
@@ -129,11 +134,12 @@ AND (
     'blog:create:self', 'blog:edit:self', 'shop:item:manage:self', 
     'shop:stats:view:self', 'stream:manage:self', 'survey:manage:self', 'server:manage:self'
   )
-  OR p.id IN (SELECT permission_id FROM public.role_permissions rp JOIN public.roles r2 ON rp.role_id = r2.id WHERE r2.name = 'subscriber')
+  OR p.id IN (SELECT permission_id FROM public.role_permissions rp JOIN public.roles r2 ON rp.role_id = r2.id WHERE r2.name = 'viewer')
 );
 
 -- ==========================================
--- MOD (Moderación de comunidad)
+-- 4. MOD (Moderación)
+-- Hereda de VIEWER
 -- ==========================================
 INSERT INTO public.role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM public.roles r, public.permissions p
@@ -147,7 +153,8 @@ AND (
 );
 
 -- ==========================================
--- ADMIN (Gestión operativa del negocio)
+-- 5. ADMIN (Gestión Operativa)
+-- Hereda de MOD
 -- ==========================================
 INSERT INTO public.role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM public.roles r, public.permissions p
@@ -162,7 +169,8 @@ AND (
 );
 
 -- ==========================================
--- SUPER ADMIN (Todo, incluyendo sistema y dinero)
+-- 6. SUPER ADMIN (Control Total)
+-- Hereda de ADMIN
 -- ==========================================
 INSERT INTO public.role_permissions (role_id, permission_id)
 SELECT r.id, p.id FROM public.roles r, public.permissions p
