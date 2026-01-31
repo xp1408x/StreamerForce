@@ -75,8 +75,8 @@ export default function ResetPasswordPage() {
                 Tu contraseña ha sido cambiada exitosamente. Redirigiendo al login...
               </CardDescription>
             </CardHeader>
-          </CardContent>
-        </Card>
+          </Card>
+        </div>
       </div>
     )
   }

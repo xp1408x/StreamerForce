@@ -10,8 +10,10 @@ export interface Product {
   metadata: Record<string, unknown> | null
 }
 
+import { createStaticClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
+
 export async function getAllProductIds(): Promise<string[]> {
-  const { createStaticClient } = await import("@/lib/supabase/server")
   const supabase = createStaticClient()
 
   const { data, error } = await supabase
@@ -25,7 +27,6 @@ export async function getAllProductIds(): Promise<string[]> {
 }
 
 export async function getAllStreamerSlugs(): Promise<string[]> {
-  const { createStaticClient } = await import("@/lib/supabase/server")
   const supabase = createStaticClient()
 
   const { data, error } = await supabase.from("streamers").select("slug")
@@ -37,7 +38,6 @@ export async function getAllStreamerSlugs(): Promise<string[]> {
 
 // This will be fetched from Supabase, but we define the interface here
 export async function getProductFromDatabase(productId: string): Promise<Product | null> {
-  const { createClient } = await import("@/lib/supabase/server")
   const supabase = await createClient()
 
   const { data, error } = await supabase
