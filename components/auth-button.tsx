@@ -21,15 +21,19 @@ export function AuthButton() {
 
   useEffect(() => {
     const getUser = async () => {
+      console.log("AuthButton: Fetching user...");
       const { data: { user } } = await supabase.auth.getUser()
+      console.log("AuthButton: User fetched:", user);
       setUser(user)
       setLoading(false)
+      console.log("AuthButton: Loading set to false.");
     }
 
     getUser()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log("AuthButton: Auth state changed. Event:", event, "Session:", session);
         setUser(session?.user ?? null)
       }
     )
@@ -42,6 +46,8 @@ export function AuthButton() {
     router.push("/")
     router.refresh()
   }
+
+  console.log("AuthButton: Render. Loading:", loading, "User:", user);
 
   if (loading) {
     return <div className="w-8 h-8 bg-muted rounded-full animate-pulse" />

@@ -1,61 +1,67 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+// middleware.ts (DEBE llamarse así y estar en la raíz)
+import { createServerClient } from "@supabase/ssr"
+import { NextResponse, type NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: { headers: request.headers },
+  let supabaseResponse = NextResponse.next({
+    request,
   })
 
-  // 1. Inicializar Supabase Client
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) { return request.cookies.get(name)?.value },
-        set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options })
-          response = NextResponse.next({ request: { headers: request.headers } })
-          response.cookies.set({ name, value, ...options })
+        getAll() {
+          return request.cookies.getAll()
         },
-        remove(name: string, options: CookieOptions) {
-          request.cookies.set({ name, value, ...options })
-          response = NextResponse.next({ request: { headers: request.headers } })
-          response.cookies.set({ name, value, ...options })
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({ request })
+          cookiesToSet.forEach(({ name, value, options }) => 
+            supabaseResponse.cookies.set(name, value, options)
+          )
         },
       },
     }
   )
 
-  // 2. Obtener la sesión del usuario
   const { data: { user } } = await supabase.auth.getUser()
+  const { pathname } = request.nextUrl
 
-  const url = request.nextUrl.clone()
+  // 🛡️ REGLAS DE ACCESO
 
-  // 3. PROTEGER RUTAS POR ROL
-  // Si intenta entrar al dashboard de admin
-  if (url.pathname.startsWith("/dashboard/admin")) {
-    // Aquí puedes chequear el role en el user_metadata de Supabase
-    // (Asegúrate de guardar el rol en la metadata al crear el usuario o sincronizarlo)
-    const userRole = user?.app_metadata?.role; 
+  // 1. Si no hay usuario y trata de entrar al dashboard
+  if (pathname.startsWith("/dashboard") && !user) {
+    return NextResponse.redirect(new URL("/auth/login", request.url))
+  }
 
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+  // 2. Si el usuario está logueado pero intenta entrar a login/register
+  if (user && (pathname.startsWith("/auth/login") || pathname.startsWith("/auth/register"))) {
+    return NextResponse.redirect(new URL("/dashboard", request.url))
+  }
+
+  // 3. Protección de nivel Admin
+  if (pathname.startsWith("/dashboard/admin")) {
+    // IMPORTANTE: El rol debe estar en app_metadata
+    const userRole = user?.app_metadata?.role
+    if (userRole !== "admin" && userRole !== "super_admin") {
+      return NextResponse.redirect(new URL("/dashboard", request.url))
     }
   }
 
-  // Si intenta entrar a cualquier parte del dashboard sin estar logueado
-  if (url.pathname.startsWith("/dashboard") && !user) {
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-
-  return response
+  return supabaseResponse
 }
 
-// 4. CONFIGURAR QUÉ RUTAS ACTIVAN EL MIDDLEWARE
 export const config = {
   matcher: [
-    '/dashboard/:path*', // Protege todo lo que empiece con /dashboard
-    '/profile/:path*',   // Protege el perfil
+    /*
+     * Match todas las rutas excepto:
+     * - _next/static (archivos estáticos)
+     * - _next/image (optimización de imágenes)
+     * - favicon.ico (icono)
+     * - archivos con extensiones (svg, png, jpg, etc)
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }

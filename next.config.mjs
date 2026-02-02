@@ -1,13 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: { ignoreBuildErrors: true },
+  // Ya no hay 'output: export', ahora Next.js puede usar el servidor
   images: { unoptimized: true },
-  output: "export",
-  trailingSlash: true,
-  // Al añadir esta función, obligas a Next a usar Webpack
-  webpack: (config, { isServer }) => {
-    return config;
-  },
+  typescript: { ignoreBuildErrors: true },
 }
 
 export default nextConfig;

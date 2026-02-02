@@ -5,35 +5,24 @@ RewriteBase /
 <IfModule mod_mime.c>
   AddType application/javascript .js
   AddType text/css .css
-  AddType application/json .json
-  AddType text/plain .txt
 </IfModule>
 
-# 2. CORS Headers para Supabase y APIs externas
-<IfModule mod_headers.c>
-  Header set Access-Control-Allow-Origin "*"
-  Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
-  Header set Access-Control-Allow-Headers "Content-Type, Authorization"
-  Header set Access-Control-Max-Age "86400"
-</IfModule>
-
-# 3. Si el archivo físico existe, entrégalo y no hagas nada más
+# 2. Si el archivo físico existe, entrégalo y no hagas nada más
 RewriteCond %{REQUEST_FILENAME} -f [OR]
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
-# 4. Rutas dinámicas (trailingSlash: true)
+# 3. Rutas dinámicas (trailingSlash: true)
 # Esto busca la carpeta y entrega el index.html interno
 RewriteRule ^blog/([^/]+)/?$ blog/$1/index.html [L]
 RewriteRule ^streamers/([^/]+)/?$ streamers/$1/index.html [L]
 RewriteRule ^servers/([^/]+)/?$ servers/$1/index.html [L]
-RewriteRule ^shop/([^/]+)/?$ shop/$1/index.html [L]
 
-# 5. Páginas estáticas simples (ej: /about -> /about/index.html)
+# 4. Páginas estáticas simples (ej: /about -> /about/index.html)
 RewriteCond %{DOCUMENT_ROOT}/$1/index.html -f
 RewriteRule ^(.*)/?$ $1/index.html [L]
 
-# 6. Fallback de Seguridad: 
+# 5. Fallback de Seguridad: 
 # Si NO es un archivo de la carpeta _next y no existe, ve al inicio
 RewriteCond %{REQUEST_URI} !^/_next/ [NC]
 RewriteCond %{REQUEST_FILENAME} !-f

@@ -1,4 +1,4 @@
-import { createStaticClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { ProductCard } from "@/components/product-card"
 import { ClientServerFilter, ClientProductsByServer } from "@/components/shop-client"
 import { Badge } from "@/components/ui/badge"
@@ -22,8 +22,10 @@ interface Server {
   game_type: string
 }
 
+export const dynamic = "force-dynamic"
+
 export default async function ShopPage() {
-  const supabase = createStaticClient()
+  const supabase = await createClient()
 
   // Get all servers
   const { data: servers } = await supabase.from("game_servers").select("id, name, game_type").order("name")
@@ -87,7 +89,7 @@ export default async function ShopPage() {
         )}
 
         {/* Products by Server (client-side filter to allow static export) */}
-        <ClientProductsByServer servers={servers} products={products} />
+        <ClientProductsByServer servers={servers || []} products={products || []} />
 
         {(!products || products.length === 0) && (
           <Card>

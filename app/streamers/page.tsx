@@ -1,4 +1,4 @@
-import { createStaticClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { StreamerCard } from "@/components/streamer-card"
 
 interface Streamer {
@@ -13,8 +13,10 @@ interface Streamer {
   donation_link: string | null
 }
 
+export const dynamic = "force-dynamic"
+
 export default async function StreamersPage() {
-  const supabase = createStaticClient()
+  const supabase = await createClient()
   const { data: streamersData } = await supabase.from("streamers").select(`
     *,
     stream_schedules(start_slot, end_slot, is_active),

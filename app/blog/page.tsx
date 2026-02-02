@@ -1,4 +1,4 @@
-import { createStaticClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import React from 'react'
 import { ClientCategoryFilter, ClientArticleGrid } from '@/components/blog-client'
 import { ArticleCard } from "@/components/article-card"
@@ -18,8 +18,10 @@ interface Article {
   published_at: string | null
 }
 
+export const dynamic = "force-dynamic"
+
 export default async function BlogPage() {
-  const supabase = createStaticClient()
+  const supabase = await createClient()
 
   // Get all categories and articles (fetch everything at build time). Filtering
   // by category will happen client-side so the page can be fully statically

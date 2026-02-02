@@ -74,12 +74,49 @@ USING (has_permission('admin:users:manage'));
 
 
 -- OVERRIDES: Solo el super_admin o encargado de sistema
-CREATE POLICY override_insert_policy ON public.user_permission_overrides FOR INSERT
-WITH CHECK (has_permission('perm:manage:system'));
 
-CREATE POLICY override_update_policy ON public.user_permission_overrides FOR UPDATE
-USING (has_permission('perm:manage:assign'));
+CREATE POLICY override_insert_policy ON public.user_permission_overrides
+FOR INSERT 
+WITH CHECK (
+  -- 1. Permiso delegable
+  has_permission('admin:user:ban') 
+  AND
+  (SELECT is_assignable FROM public.permissions WHERE id = permission_id) = true
+  AND
+  -- 2. JERARQUÍA: Tu nivel debe ser mayor al nivel del usuario objetivo
+  public.get_my_max_level() > (
+      SELECT COALESCE(MAX(r.role_level), 0)
+      FROM public.user_roles ur
+      JOIN public.roles r ON ur.role_id = r.id
+      WHERE ur.user_id = user_permission_overrides.user_id
+  )
+  AND
+  -- 3. PESO: El peso del permiso debe ser ESTRICTAMENTE MENOR a tu nivel
+  (SELECT weight FROM public.permissions WHERE id = permission_id) < public.get_my_max_level()
+  AND
+  -- 4. No auto-gestión
+  user_id <> auth.uid()
+);
 
+CREATE POLICY overrides_update_policy ON public.user_permission_overrides
+FOR UPDATE
+USING (
+  -- 1. El ejecutor debe tener el permiso de baneo/moderación
+  public.has_permission('admin:user:ban')
+  AND
+  -- 2. JERARQUÍA: Solo puedes editar registros de usuarios con menor rango que tú
+  public.get_my_max_level() > (
+      SELECT COALESCE(MAX(r.role_level), 0)
+      FROM public.user_roles ur
+      JOIN public.roles r ON ur.role_id = r.id
+      WHERE ur.user_id = public.user_permission_overrides.user_id
+      AND ur.deleted_at IS NULL
+  )
+)
+WITH CHECK (
+  -- 3. PESO: Si se intenta cambiar el permiso, el nuevo también debe ser menor a tu nivel
+  (SELECT weight FROM public.permissions WHERE id = permission_id) < public.get_my_max_level()
+);
 
 CREATE POLICY override_select_policy ON public.user_permission_overrides FOR SELECT 
 USING (true);
@@ -270,3 +307,24 @@ WITH CHECK (
 CREATE POLICY article_favorites_select_policy ON public.article_favorites FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY article_favorites_insert_policy ON public.article_favorites FOR INSERT WITH CHECK (auth.uid() = user_id AND has_permission('social:favorite:self'));
 CREATE POLICY article_favorites_update_policy ON public.article_favorites FOR UPDATE USING (auth.uid() = user_id AND has_permission('social:favorite:self'));
+
+
+
+-- 1. Habilitar RLS en la tabla
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+
+-- 2. Permitir que el sistema escriba logs (vía Triggers)
+-- Como el trigger es 'SECURITY DEFINER', se salta la RLS al insertar,
+-- pero definimos esto por seguridad para lectura/gestión.
+
+-- 3. Lectura: Solo Admins y Super Admins pueden ver los logs
+CREATE POLICY audit_log_select_policy
+ON public.audit_logs
+FOR SELECT
+USING (
+  public.has_permission('admin:audit:view')
+);
+
+-- 4. Inmutabilidad: Prohibir UPDATE y DELETE para TODOS
+-- Al no crear políticas para UPDATE o DELETE, Postgres deniega estas acciones por defecto.
+-- No hace falta código extra, el silencio de la RLS es el bloqueo más fuerte.

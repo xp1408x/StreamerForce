@@ -18,6 +18,10 @@ ON CONFLICT (name) DO NOTHING;
 -- PERMISOS DEL SISTEMA
 -- =============================================================================
 
+-- Esto limpiará las asignaciones y los permisos mismos, 
+-- reiniciando todo el sistema de reglas.
+TRUNCATE TABLE public.role_permissions, public.permissions CASCADE;
+
 INSERT INTO public.permissions (slug, description) VALUES
 
   -- NÚCLEO Y PERFIL
@@ -207,3 +211,13 @@ INSERT INTO public.product_types (name) VALUES
   ('cosmetic')
 ON CONFLICT (name) DO NOTHING;
 END $$;
+
+ALTER TABLE public.roles ADD COLUMN IF NOT EXISTS role_level INTEGER DEFAULT 1;
+
+-- Basado en tu jerarquía:
+UPDATE public.roles SET role_level = 100 WHERE name = 'super_admin'; -- Dios
+UPDATE public.roles SET role_level = 80  WHERE name = 'admin';       -- Controla Mods hacia abajo
+UPDATE public.roles SET role_level = 50  WHERE name = 'mod';         -- Controla Streamers hacia abajo
+UPDATE public.roles SET role_level = 30  WHERE name = 'streamer';    -- No controla a nadie
+UPDATE public.roles SET role_level = 20  WHERE name = 'subscriber';
+UPDATE public.roles SET role_level = 10  WHERE name = 'viewer';      -- Base

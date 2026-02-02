@@ -1,4 +1,4 @@
-import { createStaticClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { CTASection } from "@/components/cta-section"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -8,8 +8,10 @@ import { StreamerCard } from "@/components/streamer-card"
 import { ArticleCard } from "@/components/article-card"
 import { Gamepad2, Server, Users, BookOpen, ShoppingBag, ArrowRight } from "lucide-react"
 
+export const dynamic = "force-dynamic"
+
 export default async function HomePage() {
-  const supabase = createStaticClient()
+  const supabase = await createClient()
 
   // Fetch featured content
   const { data: servers } = await supabase.from("game_servers").select("*").eq("status", "active").limit(3)

@@ -28,15 +28,24 @@ DROP TABLE IF EXISTS public.audit_logs CASCADE;
 
 CREATE TABLE public.audit_logs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID, 
-  action TEXT NOT NULL, 
+  -- Quién hizo la acción
+  actor_id UUID REFERENCES auth.users(id), 
+  -- Sobre quién recayó la acción (ej: el usuario baneado)
+  target_user_id UUID, 
+  action TEXT NOT NULL, -- INSERT, UPDATE, DELETE
   table_name TEXT NOT NULL,
-  record_pk JSONB NOT NULL, -- <--- Cambiado de UUID a JSONB
-  old_data JSONB,
-  new_data JSONB,
+  record_pk JSONB NOT NULL, -- Solo guardaremos el ID del registro
+  old_data JSONB, -- Estado anterior
+  new_data JSONB, -- Estado nuevo
+  -- Metadatos de red (Opcional, Supabase los provee en el contexto)
+  ip_address TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Índices para que tu panel de Admin vuele
+CREATE INDEX idx_audit_actor ON public.audit_logs(actor_id);
+CREATE INDEX idx_audit_target ON public.audit_logs(target_user_id);
+CREATE INDEX idx_audit_table ON public.audit_logs(table_name);
 CREATE TABLE public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username TEXT UNIQUE,
@@ -67,6 +76,7 @@ CREATE TABLE public.roles (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name TEXT UNIQUE NOT NULL,
   description TEXT,
+  role_level INTEGER DEFAULT 1,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID REFERENCES auth.users(id),
@@ -79,6 +89,7 @@ CREATE TABLE public.permissions (
   slug TEXT UNIQUE NOT NULL,
   description TEXT,
   is_assignable BOOLEAN DEFAULT true, -- Para control de lo que un admin puede delegar
+  weight INTEGER DEFAULT 10,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID REFERENCES auth.users(id),
@@ -121,6 +132,7 @@ CREATE TABLE public.user_permission_overrides (
     updated_at TIMESTAMPTZ DEFAULT now(),
     created_by UUID REFERENCES auth.users(id),
     updated_by UUID REFERENCES auth.users(id),
+    expires_at TIMESTAMPTZ,
     deleted_at TIMESTAMPTZ,
     UNIQUE (user_id, permission_id, deleted_at)
 );

@@ -1,13 +1,7 @@
-// app/blog/[slug]/page.tsx
 import ArticleClientContent from "./ArticleClientContent";
 
-export const dynamicParams = false;
-
-// Usamos un placeholder para que Next.js genere el archivo físico blog/[slug].html
-export async function generateStaticParams() {
-  return [{ slug: "index" }];
-}
-
+// ¡ESTO ES TODO! No necesitas generateStaticParams ni dynamicParams.
+// Next.js recibirá el slug automáticamente.
 export default function Page() {
   return <ArticleClientContent />;
 }

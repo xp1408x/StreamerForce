@@ -10,8 +10,8 @@ BEGIN
     JOIN public.permissions p ON upo.permission_id = p.id
     WHERE upo.user_id = auth.uid() 
       AND p.slug = requested_permission
-      AND upo.deleted_at IS NULL;
-
+      AND upo.deleted_at IS NULL
+      AND (upo.expires_at IS NULL OR upo.expires_at > NOW());
     -- Si hay override, retornamos su estado
     IF override_status IS NOT NULL THEN
         RETURN override_status;
@@ -87,26 +87,38 @@ WHERE slug IN ('wallet:manage:all', 'admin:system:config', 'storage:manage:all',
 CREATE OR REPLACE FUNCTION public.fn_audit_log()
 RETURNS TRIGGER AS $$
 DECLARE
-  v_pk_data JSONB;
+  v_target_user UUID := NULL;
 BEGIN
-  -- Detectamos la PK dinámicamente o guardamos el registro identificador
+  -- Intentamos capturar el usuario afectado de forma dinámica
   IF (TG_OP = 'DELETE') THEN
-    v_pk_data := to_jsonb(OLD); -- Guardamos todo el registro viejo como referencia de identidad
-    INSERT INTO public.audit_logs (user_id, action, table_name, record_pk, old_data)
-    VALUES (auth.uid(), TG_OP, TG_TABLE_NAME, v_pk_data, to_jsonb(OLD));
-    RETURN OLD;
-  ELSIF (TG_OP = 'UPDATE') THEN
-    v_pk_data := to_jsonb(NEW); 
-    INSERT INTO public.audit_logs (user_id, action, table_name, record_pk, old_data, new_data)
-    VALUES (auth.uid(), TG_OP, TG_TABLE_NAME, v_pk_data, to_jsonb(OLD), to_jsonb(NEW));
-    RETURN NEW;
-  ELSIF (TG_OP = 'INSERT') THEN
-    v_pk_data := to_jsonb(NEW);
-    INSERT INTO public.audit_logs (user_id, action, table_name, record_pk, new_data)
-    VALUES (auth.uid(), TG_OP, TG_TABLE_NAME, v_pk_data, to_jsonb(NEW));
-    RETURN NEW;
+    -- En delete, buscamos en OLD
+    IF (to_jsonb(OLD) ? 'user_id') THEN v_target_user := OLD.user_id; END IF;
+  ELSE
+    -- En insert/update, buscamos en NEW
+    IF (to_jsonb(NEW) ? 'user_id') THEN v_target_user := NEW.user_id; END IF;
   END IF;
-  RETURN NULL;
+
+  INSERT INTO public.audit_logs (
+    actor_id, 
+    target_user_id, 
+    action, 
+    table_name, 
+    record_pk, 
+    old_data, 
+    new_data
+  )
+  VALUES (
+    auth.uid(), 
+    v_target_user,
+    TG_OP, 
+    TG_TABLE_NAME, 
+    jsonb_build_object('id', COALESCE(NEW.id, OLD.id)), 
+    CASE WHEN TG_OP IN ('UPDATE', 'DELETE') THEN to_jsonb(OLD) ELSE NULL END,
+    CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN to_jsonb(NEW) ELSE NULL END
+  );
+
+  IF (TG_OP = 'DELETE') THEN RETURN OLD; END IF;
+  RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

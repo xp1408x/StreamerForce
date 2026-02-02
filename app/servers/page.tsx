@@ -1,12 +1,9 @@
-"use client" // <--- IMPORTANTE: Para que funcione el fetch en el navegador
-
-import { useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client" // Cambiado a cliente
+import { createClient } from "@/lib/supabase/server"
 import { ServerCard } from "@/components/server-card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2 } from "lucide-react"
 
-// Mantenemos la interface para que el código sea robusto
+export const dynamic = "force-dynamic"
+
 interface GameServer {
   id: string
   name: string
@@ -21,41 +18,16 @@ interface GameServer {
   features: string[] | null
 }
 
-export default function ServersPage() {
-  // Tipamos el estado con la interfaz: <GameServer[]>
-  const [servers, setServers] = useState<GameServer[]>([])
-  const [loading, setLoading] = useState(true)
+export default async function ServersPage() {
+  const supabase = await createClient()
+  
+  const { data: serversData, error } = await supabase
+    .from("game_servers")
+    .select("*")
+    .order("status", { ascending: false })
+    .order("name")
 
-  useEffect(() => {
-    const fetchServers = async () => {
-      try {
-        const supabase = createClient()
-        const { data, error } = await supabase
-          .from("game_servers")
-          .select("*")
-          .order("status", { ascending: false })
-          .order("name")
-        
-        if (!error && data) {
-          setServers(data as GameServer[])
-        }
-      } catch (err) {
-        console.error("Error cargando servidores:", err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchServers()
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-20 flex justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    )
-  }
-
+  const servers = (serversData || []) as GameServer[]
   const activeServers = servers.filter((s) => s.status === "active")
   const comingSoonServers = servers.filter((s) => s.status === "coming_soon")
 

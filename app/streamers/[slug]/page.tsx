@@ -1,12 +1,7 @@
-// app/streamers/[slug]/page.tsx
 import StreamerClientContent from "./StreamerClientContent";
 
-export const dynamicParams = false;
-
-// No consultes la DB aquí. Solo dale un "molde" vacío.
-export async function generateStaticParams() {
-  return [{ slug: "index" }]; 
-}
+// Forzamos a que la página no se intente pre-renderizar en el build
+export const dynamic = 'force-dynamic';
 
 export default function Page() {
   return <StreamerClientContent />;
