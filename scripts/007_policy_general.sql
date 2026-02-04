@@ -56,7 +56,7 @@ WITH CHECK (
 -- UPDATE: Solo el autor edita su texto, o un mod para "borrar" (deleted_at)
 CREATE POLICY comment_update_policy ON public.article_comments FOR UPDATE
 USING (
-  (user_id = auth.uid() AND has_permission('social:comment:self'))
+  (user_id = auth.uid() AND has_permission('blog:comment:create'))
   OR has_permission('blog:comment:moderate')
 );
 

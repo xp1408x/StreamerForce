@@ -72,7 +72,6 @@ BEGIN
 END;
 $$ language 'plpgsql' SECURITY DEFINER;
 
-ALTER TABLE public.permissions ADD COLUMN is_assignable BOOLEAN DEFAULT true;
 
 -- Marcamos permisos críticos como NO asignables por moderadores
 UPDATE public.permissions 
@@ -85,42 +84,61 @@ WHERE slug IN ('wallet:manage:all', 'admin:system:config', 'storage:manage:all',
 
 -- 2. Registrar cada cambio en la tabla de auditoría
 CREATE OR REPLACE FUNCTION public.fn_audit_log()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
 DECLARE
   v_target_user UUID := NULL;
 BEGIN
-  -- Intentamos capturar el usuario afectado de forma dinámica
-  IF (TG_OP = 'DELETE') THEN
-    -- En delete, buscamos en OLD
-    IF (to_jsonb(OLD) ? 'user_id') THEN v_target_user := OLD.user_id; END IF;
+  -- Detectar usuario afectado si existe user_id
+  IF TG_OP = 'DELETE' THEN
+    IF to_jsonb(OLD) ? 'user_id' THEN
+      v_target_user := OLD.user_id;
+    END IF;
   ELSE
-    -- En insert/update, buscamos en NEW
-    IF (to_jsonb(NEW) ? 'user_id') THEN v_target_user := NEW.user_id; END IF;
+    IF to_jsonb(NEW) ? 'user_id' THEN
+      v_target_user := NEW.user_id;
+    END IF;
   END IF;
 
   INSERT INTO public.audit_logs (
-    actor_id, 
-    target_user_id, 
-    action, 
-    table_name, 
-    record_pk, 
-    old_data, 
+    actor_id,
+    target_user_id,
+    action,
+    table_name,
+    record_pk,
+    old_data,
     new_data
   )
   VALUES (
-    auth.uid(), 
+    auth.uid(),
     v_target_user,
-    TG_OP, 
-    TG_TABLE_NAME, 
-    jsonb_build_object('id', COALESCE(NEW.id, OLD.id)), 
-    CASE WHEN TG_OP IN ('UPDATE', 'DELETE') THEN to_jsonb(OLD) ELSE NULL END,
-    CASE WHEN TG_OP IN ('INSERT', 'UPDATE') THEN to_jsonb(NEW) ELSE NULL END
+    TG_OP,
+    TG_TABLE_NAME,
+
+    -- 👇 NO asumimos PK: guardamos el snapshot identificador
+    CASE
+      WHEN TG_OP = 'INSERT' THEN to_jsonb(NEW)
+      WHEN TG_OP = 'UPDATE' THEN to_jsonb(NEW)
+      WHEN TG_OP = 'DELETE' THEN to_jsonb(OLD)
+    END,
+
+    CASE
+      WHEN TG_OP IN ('UPDATE', 'DELETE') THEN to_jsonb(OLD)
+      ELSE NULL
+    END,
+
+    CASE
+      WHEN TG_OP IN ('INSERT', 'UPDATE') THEN to_jsonb(NEW)
+      ELSE NULL
+    END
   );
 
-  IF (TG_OP = 'DELETE') THEN RETURN OLD; END IF;
-  RETURN NEW;
+  RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
+
 
 DO $$
 DECLARE

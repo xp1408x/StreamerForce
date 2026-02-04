@@ -11,3 +11,11 @@ FROM public.audit_logs a
 LEFT JOIN public.profiles actor ON a.actor_id = actor.id
 LEFT JOIN public.profiles target ON a.target_user_id = target.id
 ORDER BY a.created_at DESC;
+
+CREATE OR REPLACE FUNCTION public.get_my_max_level()
+RETURNS INTEGER AS $$
+  SELECT COALESCE(MAX(r.role_level), 0)
+  FROM public.user_roles ur
+  JOIN public.roles r ON ur.role_id = r.id
+  WHERE ur.user_id = auth.uid() AND ur.deleted_at IS NULL;
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
