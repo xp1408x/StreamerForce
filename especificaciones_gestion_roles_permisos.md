@@ -65,5 +65,4 @@ denegada: Tu rango es insuficiente para gestionar a este usuario o permiso".
 Sincronización: Tras un cambio de rol, refrescar la sesión o el estado global de permisos
 del usuario afectado si es posible.
 Nota de Seguridad: Las políticas RLS ya están configuradas en la base de datos con
-operadores de comparación estricta (<). La UI debe reflejar esta misma lógica para evitar
-frustración del usuario.
+operadores de comparación estricta (<). La UI debe reflejar esta misma lógica para evitar frustración del usuario.

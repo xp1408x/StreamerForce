@@ -13,17 +13,21 @@ export const dynamic = "force-dynamic"
 export default async function HomePage() {
   const supabase = await createClient()
 
-  // Fetch featured content
-  const { data: servers } = await supabase.from("game_servers").select("*").eq("status", "active").limit(3)
-
-  const { data: streamers } = await supabase.from("streamers").select("*").limit(3)
-
-  const { data: articles } = await supabase
+  // Iniciar las consultas en paralelo para evitar waterfalls
+  const serversP = supabase.from("game_servers").select("*").eq("status", "active").limit(3)
+  const streamersP = supabase.from("streamers").select("*").limit(3)
+  const articlesP = supabase
     .from("articles")
     .select("*")
     .eq("published", true)
     .order("published_at", { ascending: false })
     .limit(3)
+
+  const [serversRes, streamersRes, articlesRes] = await Promise.all([serversP, streamersP, articlesP])
+
+  const servers = serversRes?.data
+  const streamers = streamersRes?.data
+  const articles = articlesRes?.data
 
   return (
     <div className="flex flex-col">

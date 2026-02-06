@@ -42,7 +42,7 @@ export default function ProfilePage() {
         `)
         .eq("user_id", user.id)
 
-      const rolesList = userRoles?.map(ur => ur.roles?.name).filter(Boolean) || []
+      const rolesList = userRoles?.map((ur: any) => ur.roles?.name).filter(Boolean) || []
       setRoles(rolesList)
 
       setLoading(false)

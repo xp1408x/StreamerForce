@@ -26,11 +26,12 @@ export function ProductCard({ product }: { product: Product }) {
     <Card className="overflow-hidden hover:shadow-lg transition-shadow group flex flex-col">
       <CardHeader className="p-0">
         <div className="relative h-48 bg-gradient-to-br from-primary/20 to-accent/20">
-          {product.image_url ? (
+            {product.image_url ? (
             <Image
               src={product.image_url || "/placeholder.svg"}
               alt={product.name}
               fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (

@@ -26,6 +26,9 @@ import { Badge } from '@/components/ui/badge';
 import React, { useState } from 'react';
 
 export default function AdminDashboard() {
+  const [showLogs, setShowLogs] = useState(true);
+  const [showConfig, setShowConfig] = useState(true);
+  
   return (
     <DashboardClientLayout>
       <div className="space-y-6">
